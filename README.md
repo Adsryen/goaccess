@@ -63,6 +63,7 @@ terminal. Features include:
   Ability to build GoAccess' Docker image from upstream. You can still fully
   configure it, by using Volume mapping and editing `goaccess.conf`.  See
   [Docker](https://github.com/allinurl/goaccess#docker) section below.
+  There is also documentation how to use [docker-compose](./docker-compose/README.md).
 
 ### Nearly all web log formats... ###
 GoAccess allows any custom log format string. Predefined options include, but
@@ -101,9 +102,9 @@ GoAccess can be compiled and used on *nix systems.
 
 Download, extract and compile GoAccess with:
 
-    $ wget https://tar.goaccess.io/goaccess-1.8.1.tar.gz
-    $ tar -xzvf goaccess-1.8.1.tar.gz
-    $ cd goaccess-1.8.1/
+    $ wget https://tar.goaccess.io/goaccess-1.9.3.tar.gz
+    $ tar -xzvf goaccess-1.9.3.tar.gz
+    $ cd goaccess-1.9.3/
     $ ./configure --enable-utf8 --enable-geoip=mmdb
     $ make
     # make install
@@ -116,14 +117,6 @@ Download, extract and compile GoAccess with:
     $ ./configure --enable-utf8 --enable-geoip=mmdb
     $ make
     # make install
-
-#### Build in isolated container
-
-You can also build the binary for Debian based systems in an isolated container environment to prevent cluttering your local system with the development libraries:
-
-    $ curl -L "https://github.com/allinurl/goaccess/archive/refs/heads/master.tar.gz" | tar -xz && cd goaccess-master
-    $ docker build -t goaccess/build.debian-10 -f Dockerfile.debian-10 .
-    $ docker run -i --rm -v $PWD:/goaccess goaccess/build.debian-10 > goaccess
 
 ### Distributions ###
 
@@ -141,10 +134,8 @@ alternative option below.
 
 #### Official GoAccess Debian & Ubuntu repository ####
 
-    $ wget -O - https://deb.goaccess.io/gnugpg.key | gpg --dearmor \
-        | sudo tee /usr/share/keyrings/goaccess.gpg >/dev/null
-    $ echo "deb [signed-by=/usr/share/keyrings/goaccess.gpg arch=$(dpkg --print-architecture)] https://deb.goaccess.io/ $(lsb_release -cs) main" \
-        | sudo tee /etc/apt/sources.list.d/goaccess.list
+    $ wget -O - https://deb.goaccess.io/gnugpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/goaccess.gpg >/dev/null
+    $ echo "deb [signed-by=/usr/share/keyrings/goaccess.gpg arch=$(dpkg --print-architecture)] https://deb.goaccess.io/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/goaccess.list
     $ sudo apt-get update
     $ sudo apt-get install goaccess
 
@@ -204,7 +195,7 @@ build GoAccess from source.
 
 | Distro                 | NCurses          | GeoIP (opt)      | GeoIP2 (opt)          |  OpenSSL (opt)     |
 | ---------------------- | ---------------- | ---------------- | --------------------- | -------------------|
-| **Ubuntu/Debian**      | libncursesw6-dev | libgeoip-dev     | libmaxminddb-dev      |  libssl-dev        |
+| **Ubuntu/Debian**      | libncurses-dev   | libgeoip-dev     | libmaxminddb-dev      |  libssl-dev        |
 | **RHEL/CentOS**        | ncurses-devel    | geoip-devel      | libmaxminddb-devel    |  openssl-devel     |
 | **Arch**               | ncurses          | geoip            | libmaxminddb          |  openssl           |
 | **Gentoo**             | sys-libs/ncurses | dev-libs/geoip   | dev-libs/libmaxminddb |  dev-libs/openssl  |
@@ -218,24 +209,24 @@ build GoAccess from source.
 
 A Docker image has been updated, capable of directing output from an access log. If you only want to output a report, you can pipe a log from the external environment to a Docker-based process:
 
-    cat access.log | docker run --rm -i -e LANG=$LANG allinurl/goaccess -a -o report.html --log-format COMBINED -
+    touch report.html
+    cat access.log | docker run --rm -i -v ./report.html:/report.html -e LANG=$LANG allinurl/goaccess -a -o report.html --log-format COMBINED -
 
 OR real-time
 
     tail -F access.log | docker run -p 7890:7890 --rm -i -e LANG=$LANG allinurl/goaccess -a -o report.html --log-format COMBINED --real-time-html -
 
+There is also documentation how to use [docker-compose](./docker-compose/README.md).
+
+##### Build in isolated container
+
+You can also build the binary for Debian based systems in an isolated container environment to prevent cluttering your local system with the development libraries:
+
+    $ curl -L "https://github.com/allinurl/goaccess/archive/refs/heads/master.tar.gz" | tar -xz && cd goaccess-master
+    $ docker build -t goaccess/build.debian-12 -f Dockerfile.debian-12 .
+    $ docker run -i --rm -v $PWD:/goaccess goaccess/build.debian-12 > goaccess
+
 You can read more about using the docker image in [DOCKER.md](https://github.com/allinurl/goaccess/blob/master/DOCKER.md).
-
-
-## Contributing ##
-
-Any help on GoAccess is welcome. The most helpful way is to try it out and give
-feedback. Feel free to use the GitHub issue tracker and pull requests to
-discuss and submit code changes.
-
-You can contribute to our translations by editing the .po files direct on GitHub or using the visual interface [inlang.com](https://inlang.com/editor/github.com/allinurl/goaccess)
-
-[![translation badge](https://inlang.com/badge?url=github.com/allinurl/goaccess)](https://inlang.com/editor/github.com/allinurl/goaccess?ref=badge)
 
 ## Storage ##
 
@@ -495,5 +486,15 @@ then, load it with
 To read persisted data only (without parsing new data)
 
     # goaccess --restore
+
+## Contributing ##
+
+Any help on GoAccess is welcome. The most helpful way is to try it out and give
+feedback. Feel free to use the GitHub issue tracker and pull requests to
+discuss and submit code changes.
+
+You can contribute to our translations by editing the .po files direct on GitHub or using the visual interface [inlang.com](https://inlang.com/editor/github.com/allinurl/goaccess)
+
+[![translation badge](https://inlang.com/badge?url=github.com/allinurl/goaccess)](https://inlang.com/editor/github.com/allinurl/goaccess?ref=badge)
 
 Enjoy!

@@ -7,7 +7,7 @@
  * \____/\____/_/  |_\___/\___/\___/____/____/
  *
  * The MIT License (MIT)
- * Copyright (c) 2009-2023 Gerardo Orellana <hello @ goaccess.io>
+ * Copyright (c) 2009-2024 Gerardo Orellana <hello @ goaccess.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,14 +50,14 @@
 
 #include "xmalloc.h"
 
-static char short_options[] = "b:e:f:j:l:o:p:H:M:S:"
+static const char *short_options = "b:e:f:j:l:o:p:H:M:S:"
 #ifdef HAVE_LIBGEOIP
   "g"
 #endif
   "acdhimqrsV";
 
 /* *INDENT-OFF* */
-struct option long_opts[] = {
+static const struct option long_opts[] = {
   {"agent-list"           , no_argument       , 0 , 'a' } ,
   {"browsers-file"        , required_argument , 0 , 'b' } ,
   {"config-dialog"        , no_argument       , 0 , 'c' } ,

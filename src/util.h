@@ -6,7 +6,7 @@
  * \____/\____/_/  |_\___/\___/\___/____/____/
  *
  * The MIT License (MIT)
- * Copyright (c) 2009-2023 Gerardo Orellana <hello @ goaccess.io>
+ * Copyright (c) 2009-2024 Gerardo Orellana <hello @ goaccess.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,6 +94,7 @@ int ignore_referer (const char *host);
 int intlen (uint64_t num);
 int invalid_ipaddr (const char *str, int *ipvx);
 int ip_in_range (const char *ip);
+int is_valid_http_status (int code);
 int ptr2int (char *ptr);
 int str2int (const char *date);
 int str_inarray (const char *s, const char *arr[], int size);

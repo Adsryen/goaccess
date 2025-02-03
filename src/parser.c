@@ -7,7 +7,7 @@
  * \____/\____/_/  |_\___/\___/\___/____/____/
  *
  * The MIT License (MIT)
- * Copyright (c) 2009-2023 Gerardo Orellana <hello @ goaccess.io>
+ * Copyright (c) 2009-2024 Gerardo Orellana <hello @ goaccess.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -144,16 +144,14 @@ set_glog (Logs *logs, const char *filename) {
     logs->size = newlen;
   }
 
-  fn = xstrdup (filename);      /* ensure fn is a string */
+  fn = xstrdup (filename); /* ensure fn is a string */
   glog = logs->glog;
   glog[logs->idx].errors = xcalloc (MAX_LOG_ERRORS, sizeof (char *));
   glog[logs->idx].props.filename = xstrdup (fn);
   glog[logs->idx].props.fname = xstrdup (basename (fn));
 
   if (!glog->pipe && conf.fname_as_vhost) {
-    if (!
-        (fvh =
-         regex_extract_string (glog[logs->idx].props.fname, conf.fname_as_vhost, 1, &err)))
+    if (!(fvh = regex_extract_string (glog[logs->idx].props.fname, conf.fname_as_vhost, 1, &err)))
       FATAL ("%s %s[%s]", err, glog[logs->idx].props.fname, conf.fname_as_vhost);
     glog[logs->idx].fname_as_vhost = fvh;
   }
@@ -277,7 +275,7 @@ init_log_item (GLog *glog) {
   logitem->req = NULL;
   logitem->resp_size = 0LL;
   logitem->serve_time = 0;
-  logitem->status = 0;
+  logitem->status = -1;
   logitem->time = NULL;
   logitem->uniq_key = NULL;
   logitem->vhost = NULL;
@@ -362,14 +360,14 @@ free_glog (GLogItem *logitem) {
 /* Decodes the given URL-encoded string.
  *
  * On success, the decoded string is assigned to the output buffer. */
-#define B16210(x) (((x) >= '0' && (x) <= '9') ? ((x) - '0') : (toupper((x)) - 'A' + 10))
+#define B16210(x) (((x) >= '0' && (x) <= '9') ? ((x) - '0') : (toupper((unsigned char) (x)) - 'A' + 10))
 static void
 decode_hex (char *url, char *out) {
   char *ptr;
   const char *c;
 
   for (c = url, ptr = out; *c; c++) {
-    if (*c != '%' || !isxdigit (c[1]) || !isxdigit (c[2])) {
+    if (*c != '%' || !isxdigit ((unsigned char) c[1]) || !isxdigit ((unsigned char) c[2])) {
       *ptr++ = *c;
     } else {
       *ptr++ = (char) ((B16210 (c[1]) * 16) + (B16210 (c[2])));
@@ -477,7 +475,7 @@ extract_referer_site (const char *referer, char *host) {
   if ((len = strlen (begin)) == 0)
     goto clean;
 
-  if ((end = strchr (begin, '/')) != NULL)
+  if ((end = strpbrk (begin, "/?")) != NULL)
     len = end - begin;
 
   if (len == 0)
@@ -762,7 +760,7 @@ static void
 find_alpha (const char **str) {
   const char *s = *str;
   while (*s) {
-    if (isspace (*s))
+    if (isspace ((unsigned char) *s))
       s++;
     else
       break;
@@ -777,7 +775,7 @@ find_alpha_count (const char *str) {
   int cnt = 0;
   const char *s = str;
   while (*s) {
-    if (isspace (*s))
+    if (isspace ((unsigned char) *s))
       s++, cnt++;
     else
       break;
@@ -883,6 +881,14 @@ set_agent_hash (GLogItem *logitem) {
   sprintf (logitem->agent_hex, "%" PRIx32, logitem->agent_hash);
 }
 
+static int
+handle_default_case_token (const char **str, const char *p) {
+  char *pch = NULL;
+  if ((pch = strchr (*str, p[1])) != NULL)
+    *str += pch - *str;
+  return 0;
+}
+
 #pragma GCC diagnostic warning "-Wformat-nonliteral"
 
 /* Parse the log string given log format rule.
@@ -909,7 +915,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* date */
   case 'd':
     if (logitem->date)
-      return 0;
+      return handle_default_case_token (str, p);
 
     /* Attempt to parse date format containing spaces,
      * i.e., syslog date format (Jul\s15, Nov\s\s2).
@@ -935,7 +941,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* time */
   case 't':
     if (logitem->time)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -951,7 +957,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* date/time as decimal, i.e., timestamps, ms/us  */
   case 'x':
     if (logitem->time && logitem->date)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -969,7 +975,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* Virtual Host */
   case 'v':
     if (logitem->vhost)
-      return 0;
+      return handle_default_case_token (str, p);
     tkn = parse_string (&(*str), end, 1);
     if (tkn == NULL)
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
@@ -978,7 +984,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* remote user */
   case 'e':
     if (logitem->userid)
-      return 0;
+      return handle_default_case_token (str, p);
     tkn = parse_string (&(*str), end, 1);
     if (tkn == NULL)
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
@@ -987,7 +993,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* cache status */
   case 'C':
     if (logitem->cache_status)
-      return 0;
+      return handle_default_case_token (str, p);
     tkn = parse_string (&(*str), end, 1);
     if (tkn == NULL)
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
@@ -999,7 +1005,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* remote hostname (IP only) */
   case 'h':
     if (logitem->host)
-      return 0;
+      return handle_default_case_token (str, p);
     /* per https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2 */
     /* square brackets are possible */
     if (*str[0] == '[' && (*str += 1) && **str)
@@ -1024,7 +1030,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* request method */
   case 'm':
     if (logitem->method)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
     {
@@ -1041,7 +1047,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* request not including method or protocol */
   case 'U':
     if (logitem->req)
-      return 0;
+      return handle_default_case_token (str, p);
     tkn = parse_string (&(*str), end, 1);
     if (tkn == NULL || *tkn == '\0') {
       free (tkn);
@@ -1058,7 +1064,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* query string alone, e.g., ?param=goaccess&tbm=shop */
   case 'q':
     if (logitem->qstr)
-      return 0;
+      return handle_default_case_token (str, p);
     tkn = parse_string (&(*str), end, 1);
     if (tkn == NULL || *tkn == '\0') {
       free (tkn);
@@ -1075,7 +1081,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* request protocol */
   case 'H':
     if (logitem->protocol)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
     {
@@ -1092,7 +1098,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* request, including method + protocol */
   case 'r':
     if (logitem->req)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1101,14 +1107,14 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     break;
     /* Status Code */
   case 's':
-    if (logitem->status)
-      return 0;
+    if (logitem->status >= 0)
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
     logitem->status = strtol (tkn, &sEnd, 10);
     if (tkn == sEnd || *sEnd != '\0' || errno == ERANGE ||
-        (!conf.no_strict_status && (logitem->status < 100 || logitem->status > 599))) {
+        (!conf.no_strict_status && !is_valid_http_status (logitem->status))) {
       spec_err (logitem, ERR_SPEC_TOKN_INV, *p, tkn);
       free (tkn);
       return 1;
@@ -1118,7 +1124,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* size of response in bytes - excluding HTTP headers */
   case 'b':
     if (logitem->resp_size)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1126,13 +1132,13 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     if (tkn == bEnd || *bEnd != '\0' || errno == ERANGE)
       bandw = 0;
     logitem->resp_size = bandw;
-    __sync_bool_compare_and_swap (&conf.bandwidth, 0, 1);       /* set flag */
+    __sync_bool_compare_and_swap (&conf.bandwidth, 0, 1); /* set flag */
     free (tkn);
     break;
     /* referrer */
   case 'R':
     if (logitem->ref)
-      return 0;
+      return handle_default_case_token (str, p);
 
     if (!(tkn = parse_string (&(*str), end, 1)))
       tkn = alloc_string ("-");
@@ -1158,7 +1164,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     /* user agent */
   case 'u':
     if (logitem->agent)
-      return 0;
+      return handle_default_case_token (str, p);
 
     tkn = parse_string (&(*str), end, 1);
     if (tkn != NULL && *tkn != '\0') {
@@ -1184,7 +1190,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
   case 'L':
     /* ignore it if we already have served time */
     if (logitem->serve_time)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1195,7 +1201,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     logitem->serve_time = (serve_secs > 0) ? serve_secs * MILS : 0;
 
     /* Determine if time-served data was stored on-disk. */
-    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1);     /* set flag */
+    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1); /* set flag */
     free (tkn);
     break;
     /* time taken to serve the request, in seconds with a milliseconds
@@ -1203,7 +1209,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
   case 'T':
     /* ignore it if we already have served time */
     if (logitem->serve_time)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1218,14 +1224,14 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     logitem->serve_time = (serve_secs > 0) ? serve_secs * SECS : 0;
 
     /* Determine if time-served data was stored on-disk. */
-    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1);     /* set flag */
+    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1); /* set flag */
     free (tkn);
     break;
     /* time taken to serve the request, in microseconds */
   case 'D':
     /* ignore it if we already have served time */
     if (logitem->serve_time)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1235,14 +1241,14 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     logitem->serve_time = serve_time;
 
     /* Determine if time-served data was stored on-disk. */
-    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1);     /* set flag */
+    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1); /* set flag */
     free (tkn);
     break;
     /* time taken to serve the request, in nanoseconds */
   case 'n':
     /* ignore it if we already have served time */
     if (logitem->serve_time)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1254,21 +1260,21 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     logitem->serve_time = (serve_time > 0) ? serve_time / MILS : 0;
 
     /* Determine if time-served data was stored on-disk. */
-    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1);     /* set flag */
+    __sync_bool_compare_and_swap (&conf.serve_usecs, 0, 1); /* set flag */
     free (tkn);
     break;
     /* UMS: Krypto (TLS) "ECDHE-RSA-AES128-GCM-SHA256" */
   case 'k':
     /* error to set this twice */
     if (logitem->tls_cypher)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
 #if defined(HAVE_LIBSSL) && defined(HAVE_CIPHER_STD_NAME)
     {
       char *tmp = NULL;
-      for (tmp = tkn; isdigit (*tmp); tmp++);
+      for (tmp = tkn; isdigit ((unsigned char) *tmp); tmp++);
       if (!strlen (tmp))
         extract_tls_version_cipher (tkn, &logitem->tls_cypher, &logitem->tls_type);
       else
@@ -1284,7 +1290,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
   case 'K':
     /* error to set this twice */
     if (logitem->tls_type)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1295,7 +1301,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
   case 'M':
     /* error to set this twice */
     if (logitem->mime_type)
-      return 0;
+      return handle_default_case_token (str, p);
     if (!(tkn = parse_string (&(*str), end, 1)))
       return spec_err (logitem, ERR_SPEC_TOKN_NUL, *p, NULL);
 
@@ -1308,8 +1314,7 @@ parse_specifier (GLogItem *logitem, const char **str, const char *p, const char 
     break;
     /* everything else skip it */
   default:
-    if ((pch = strchr (*str, p[1])) != NULL)
-      *str += pch - *str;
+    handle_default_case_token (str, p);
   }
 
   return 0;
@@ -1428,8 +1433,8 @@ find_xff_host (GLogItem *logitem, const char **str, const char **p) {
     if (!(extract = parse_string (&(*str), pch, 1)))
       goto clean;
 
-    if (!(res = set_xff_host (logitem, extract, skips, 1)))
-      free (extract);
+    res = set_xff_host (logitem, extract, skips, 1);
+    free (extract);
     (*str)++;   /* move a char forward from the trailing delim */
   } else {
     res = set_xff_host (logitem, *str, skips, 0);
@@ -1507,7 +1512,7 @@ parse_format (GLogItem *logitem, const char *str, const char *lfmt) {
       if ((ret = parse_specifier (logitem, &str, p, end)))
         return ret;
       perc = 0;
-    } else if (perc && isspace (p[0])) {
+    } else if (perc && isspace ((unsigned char) p[0])) {
       return 1;
     } else {
       str++;
@@ -1557,8 +1562,7 @@ output_logerrors (void) {
     if (!glog->log_erridx)
       continue;
 
-    fprintf (stderr, "==%d== GoAccess - version %s - %s %s\n", pid, GO_VERSION, __DATE__,
-             __TIME__);
+    fprintf (stderr, "==%d== GoAccess - version %s - %s %s\n", pid, GO_VERSION, __DATE__, __TIME__);
     fprintf (stderr, "==%d== Config file: %s\n", pid, conf.iconfigfile ? : NO_CONFIG_FILE);
     fprintf (stderr, "==%d== https://goaccess.io - <hello@goaccess.io>\n", pid);
     fprintf (stderr, "==%d== Released under the MIT License.\n", pid);
@@ -1621,10 +1625,12 @@ is_static (const char *req) {
  * If the status code is within the ignore-array, 1 is returned. */
 static int
 ignore_status_code (int status) {
+  int i = 0;
+
   if (!status || conf.ignore_status_idx == 0)
     return 0;
 
-  for (int i = 0; i < conf.ignore_status_idx; i++)
+  for (i = 0; i < conf.ignore_status_idx; i++)
     if (status == conf.ignore_status[i])
       return 1;
 
@@ -1859,9 +1865,9 @@ static int
 atomic_lpts_update (GLog *glog, GLogItem *logitem) {
   int64_t oldts = 0, newts = 0;
   /* atomic update loop */
-  newts = mktime (&logitem->dt);        // Get timestamp from logitem->dt
+  newts = mktime (&logitem->dt); // Get timestamp from logitem->dt
   while (!__sync_bool_compare_and_swap (&glog->lp.ts, oldts, newts)) {
-    oldts = glog->lp.ts;        /* Reread glog->lp.ts if CAS failed */
+    oldts = glog->lp.ts; /* Reread glog->lp.ts if CAS failed */
     if (oldts >= newts) {
       break;    /* No need to update if oldts is already greater */
     }
@@ -1976,6 +1982,7 @@ read_line (GLog *glog, char *line, int *test, uint32_t *cnt, int dry_run) {
     uncount_invalid (glog);
     return NULL;
   }
+  glog->read++;
 
   return logitem;
 }
@@ -1984,13 +1991,13 @@ read_line (GLog *glog, char *line, int *test, uint32_t *cnt, int dry_run) {
 static void *
 read_lines_thread (void *arg) {
   GJob *job = (GJob *) arg;
+  int i = 0;
 
-  for (int i = 0; i < job->p; i++) {
+  for (i = 0; i < job->p; i++) {
     /* ensure we don't process more than we should when testing for log format,
      * else free chunk and stop processing threads */
     if (!job->test || (job->test && job->cnt < conf.num_tests))
-      job->logitems[i] =
-        read_line (job->glog, job->lines[i], &job->test, &job->cnt, job->dry_run);
+      job->logitems[i] = read_line (job->glog, job->lines[i], &job->test, &job->cnt, job->dry_run);
     else
       conf.stop_processing = 1;
 
@@ -2048,7 +2055,9 @@ fgetline (FILE *fp) {
 void *
 process_lines_thread (void *arg) {
   GJob *job = (GJob *) arg;
-  for (int i = 0; i < job->p; i++) {
+  int i = 0;
+
+  for (i = 0; i < job->p; i++) {
     if (job->logitems[i] != NULL && !job->dry_run && job->logitems[i]->errstr == NULL) {
       process_log (job->logitems[i]);
       free_glog (job->logitems[i]);
@@ -2061,6 +2070,9 @@ process_lines_thread (void *arg) {
 static void
 init_jobs (GJob jobs[2][conf.jobs], GLog *glog, int dry_run, int test) {
   int b = 0, k = 0;
+#ifndef WITH_GETLINE
+  int i = 0;
+#endif
 
   for (b = 0; b < 2; b++) {
     for (k = 0; k < conf.jobs; k++) {
@@ -2073,7 +2085,7 @@ init_jobs (GJob jobs[2][conf.jobs], GLog *glog, int dry_run, int test) {
       jobs[b][k].logitems = xcalloc (conf.chunk_size, sizeof (GLogItem));
       jobs[b][k].lines = xcalloc (conf.chunk_size, sizeof (char *));
 #ifndef WITH_GETLINE
-      for (int i = 0; i < conf.chunk_size; i++)
+      for (i = 0; i < conf.chunk_size; i++)
         jobs[b][k].lines[i] = xcalloc (LINE_BUFFER, sizeof (char));
 #endif
     }
@@ -2085,7 +2097,7 @@ static void
 read_lines_from_file (FILE *fp, GLog *glog, GJob jobs[2][conf.jobs], int b, char **s) {
   int k = 0;
 
-  for (k = 1; k < conf.jobs || (conf.jobs == 1 && k == 1); k++) {
+  for (k = 0; k < conf.jobs; k++) {
 #ifdef WITH_GETLINE
     while ((*s = fgetline (fp)) != NULL) {
       jobs[b][k].lines[jobs[b][k].p] = *s;
@@ -2093,7 +2105,6 @@ read_lines_from_file (FILE *fp, GLog *glog, GJob jobs[2][conf.jobs], int b, char
     while ((*s = fgets (jobs[b][k].lines[jobs[b][k].p], LINE_BUFFER, fp)) != NULL) {
 #endif
       glog->bytes += strlen (jobs[b][k].lines[jobs[b][k].p]);
-      glog->read++;
 
       if (++(jobs[b][k].p) >= conf.chunk_size)
         break;  // goto next chunk
@@ -2106,7 +2117,7 @@ static void
 process_lines (GJob jobs[2][conf.jobs], uint32_t *cnt, int *test, int b) {
   int k = 0;
 
-  for (k = 1; k < conf.jobs || (conf.jobs == 1 && k == 1); k++) {
+  for (k = 0; k < conf.jobs; k++) {
     process_lines_thread (&jobs[b][k]);
     *cnt += jobs[b][k].cnt;
     jobs[b][k].cnt = 0;
@@ -2119,11 +2130,14 @@ process_lines (GJob jobs[2][conf.jobs], uint32_t *cnt, int *test, int b) {
 static void
 free_jobs (GJob jobs[2][conf.jobs]) {
   int b = 0, k = 0;
+#ifndef WITH_GETLINE
+  int i = 0;
+#endif
 
   for (b = 0; b < 2; b++) {
     for (k = 0; k < conf.jobs; k++) {
 #ifndef WITH_GETLINE
-      for (int i = 0; i < conf.chunk_size; i++)
+      for (i = 0; i < conf.chunk_size; i++)
         free (jobs[b][k].lines[i]);
 #endif
       free (jobs[b][k].logitems);
@@ -2156,10 +2170,16 @@ read_lines (FILE *fp, GLog *glog, int dry_run) {
   while (1) {   /* b = 0 or 1 */
     read_lines_from_file (fp, glog, jobs, b, &s);
 
+    /* if nothing was read from the log, skip it for now */
+    if (!glog->bytes) {
+      test = 0;
+      break;
+    }
+
     if (conf.jobs == 1) {
-      read_lines_thread (&jobs[b][1]);
+      read_lines_thread (&jobs[b][0]);
     } else {
-      for (k = 1; k < conf.jobs; k++) {
+      for (k = 0; k < conf.jobs; k++) {
         jobs[b][k].running = 1;
         pthread_create (&threads[k], NULL, read_lines_thread, (void *) &jobs[b][k]);
       }
@@ -2175,10 +2195,12 @@ read_lines (FILE *fp, GLog *glog, int dry_run) {
     if (conf.jobs > 1)
       b = b ^ 1;
 
-    for (k = 1; k < conf.jobs; k++) {
-      if (jobs[b][k].running) {
-        pthread_join (threads[k], &status);
-        jobs[b][k].running = 0;
+    if (conf.jobs > 1) {
+      for (k = 0; k < conf.jobs; k++) {
+        if (jobs[b][k].running) {
+          pthread_join (threads[k], &status);
+          jobs[b][k].running = 0;
+        }
       }
     }
 
@@ -2196,12 +2218,12 @@ read_lines (FILE *fp, GLog *glog, int dry_run) {
     /* flip from block A/B to B/A */
     if (conf.jobs > 1)
       b = b ^ 1;
-  }     // while (1)
+  }             // while (1)
 
   /* After eof, process last data */
   for (b = 0; b < 2; b++) {
-    for (k = 1; k < conf.jobs; k++) {
-      if (jobs[b][k].running) {
+    for (k = 0; k < conf.jobs; k++) {
+      if (conf.jobs > 1 && jobs[b][k].running) {
         pthread_join (threads[k], &status);
         jobs[b][k].running = 0;
       }
@@ -2264,11 +2286,11 @@ persist_last_parse (GLog *glog) {
 
     memcpy (glog->lp.snippet, glog->snippet, glog->snippetlen);
 
-    ht_insert_last_parse (glog->props.inode, glog->lp);
+    ht_insert_last_parse (glog->props.inode, &glog->lp);
   }
   /* probably from a pipe */
   else if (!glog->props.inode) {
-    ht_insert_last_parse (0, glog->lp);
+    ht_insert_last_parse (0, &glog->lp);
   }
 }
 

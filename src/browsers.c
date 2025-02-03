@@ -7,7 +7,7 @@
  * \____/\____/_/  |_\___/\___/\___/____/____/
  *
  * The MIT License (MIT)
- * Copyright (c) 2009-2023 Gerardo Orellana <hello @ goaccess.io>
+ * Copyright (c) 2009-2024 Gerardo Orellana <hello @ goaccess.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@
 static char ***browsers_hash = NULL;
 
 /* {"search string", "belongs to"} */
-static const char *browsers[][2] = {
+static const char *const browsers[][2] = {
   /* Game systems: most of them are based on major browsers,
    * thus they need to go before. */
   {"Xbox One", "Game Systems"},
@@ -206,6 +206,7 @@ static const char *browsers[][2] = {
   {"yacybot", "Crawlers"},
   {"PycURL", "Crawlers"},
   {"PHP", "Crawlers"},
+  {"ClaudeBot", "Crawlers"},
   {"AndroidDownloadManager", "Crawlers"},
   {"Embedly", "Crawlers"},
   {"ruby", "Crawlers"},
@@ -214,7 +215,7 @@ static const char *browsers[][2] = {
   {"Python", "Crawlers"},
   {"LinkedIn", "Crawlers"},
   {"Microsoft-WebDAV", "Crawlers"},
-  {"DuckDuckGo-Favicons-Bot", "Crawlers"},
+  {"DuckDuckGo", "Crawlers"},
   {"bingbot", "Crawlers"},
   {"PetalBot", "Crawlers"},
   {"Discordbot", "Crawlers"},
@@ -243,17 +244,18 @@ static const char *browsers[][2] = {
   {"ZmEu", "Crawlers"},
   {"DowntimeDetector", "Crawlers"},
   {"MauiBot", "Crawlers"},
-  {"Cloud", "Crawlers"},
   {"stagefright", "Crawlers"},
-  {"ZoteroTranslationServer", "Cralwers"},      /* Nodeja Zotero Translation Server https://github.com/zotero/translation-server */
+  {"ImagesiftBot", "Crawlers"},
+  {"Bytespider", "Crawlers"},
+  {"ZoteroTranslationServer", "Cralwers"}, /* Nodeja Zotero Translation Server https://github.com/zotero/translation-server */
 
   /* HTTP Library or HTTP Server User Agents - Suggest New Category */
-  {"axios", "HTTP Library"},    /* NodeJS axios axios-http.com */
-  {"lua-resty-http", "HTTP Library"},   /* Nginx lua-resty-http module */
+  {"axios", "HTTP Library"}, /* NodeJS axios axios-http.com */
+  {"lua-resty-http", "HTTP Library"}, /* Nginx lua-resty-http module */
 
   /* Citation Services */
-  {"Citoid", "Citation"},       /* MediaWiki Citoid Citation Service https://www.mediawiki.org/wiki/Citoid */
-  {"EasyBib", "Citation"},      /* Easybib Citation https://easybib.com */
+  {"Citoid", "Citation"}, /* MediaWiki Citoid Citation Service https://www.mediawiki.org/wiki/Citoid */
+  {"EasyBib", "Citation"}, /* Easybib Citation https://easybib.com */
 
   /* Podcast fetchers */
   {"Downcast", "Podcasts"},
@@ -293,12 +295,12 @@ static const char *browsers[][2] = {
   {"Uptime-Kuma", "Uptime"},
 
   /* Performance and Caching - Suggest a new category */
-  {"ShortPixel", "Performance"},        /* Image Optimization */
-  {"WP Rocket", "Caching"},     /* Preloading Cache for WordPress Plugin */
+  {"ShortPixel", "Performance"}, /* Image Optimization */
+  {"WP Rocket", "Caching"}, /* Preloading Cache for WordPress Plugin */
 
   /* Security - Suggest a new category */
-  {"Barracuda Sentinel", "Security"},   /* Barricuda spear fishing service */
-  {"ACI Site Scanner", "Security"},     /* Can't confirm specific vendor */
+  {"Barracuda Sentinel", "Security"}, /* Barricuda spear fishing service */
+  {"ACI Site Scanner", "Security"}, /* Can't confirm specific vendor */
 
 
   {"Mozilla", "Others"}

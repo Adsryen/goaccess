@@ -1,4 +1,4 @@
-.TH goaccess 1 "SEPTEMBER 2023" GNU+Linux "User Manuals"
+.TH goaccess 1 "MAY 2024" GNU+Linux "User Manuals"
 .SH NAME
 goaccess \- fast web log analyzer and interactive viewer.
 .SH SYNOPSIS
@@ -244,13 +244,22 @@ one variable and another predefined name in another variable.
   AWSELB       - Amazon Elastic Load Balancing,
   AWSS3        - Amazon Simple Storage Service (S3)
   AWSALB       - Amazon Application Load Balancer
-  CADDY        - Caddy's JSON Structured format
+  CADDY        - Caddy's JSON Structured format (local/info format)
   TRAEFIKCLF   - Traefik's CLF flavor
+.IP
+.I Note:
+Generally, you need quotes around values that include white spaces, commas,
+pipes, quotes, and/or brackets. Inner quotes must be escaped.
 .IP
 .I Note:
 Piping data into GoAccess won't prompt a log/date/time configuration dialog,
 you will need to previously define it in your configuration file or in the
 command line.
+.IP
+.I Note:
+The default GoAccess format for CADDY is the 'local/info' format. Nevertheless,
+if needed, you have the option to utilize a custom GoAccess log format to match
+your particular configuration.
 .SS
 USER INTERFACE OPTIONS
 .TP
@@ -600,6 +609,9 @@ octet of IPv4 user IP addresses and the last 80 bits of IPv6 addresses to
 zeros.
 e.g., 192.168.20.100 => 192.168.20.0
 e.g., 2a03:2880:2110:df07:face:b00c::1 => 2a03:2880:2110:df07::
+.IP
+.I Note:
+This deactivates -a.
 .TP
 \fB\-\-chunk-size=<256-32768>
 This determines the number of lines that form a chunk. This parameter

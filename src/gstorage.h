@@ -6,7 +6,7 @@
  * \____/\____/_/  |_\___/\___/\___/____/____/
  *
  * The MIT License (MIT)
- * Copyright (c) 2009-2023 Gerardo Orellana <hello @ goaccess.io>
+ * Copyright (c) 2009-2024 Gerardo Orellana <hello @ goaccess.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -140,10 +140,10 @@ typedef struct httpprotocols_ {
 
 extern const httpmethods http_methods[];
 extern const httpprotocols http_protocols[];
-extern size_t http_methods_len;
-extern size_t http_protocols_len;
+extern const size_t http_methods_len;
+extern const size_t http_protocols_len;
 
-char *get_mtr_str (GSMetric metric);
+const char *get_mtr_str (GSMetric metric);
 int excluded_ip (GLogItem * logitem);
 uint32_t *i322ptr (uint32_t val);
 uint64_t *uint642ptr (uint64_t val);
